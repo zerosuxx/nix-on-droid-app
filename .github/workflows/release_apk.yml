@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      APK_DIR_PATH: "./app/build/outputs/apk/debug"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build APK
+        run: |
+          exit_on_error() { echo "$1"; exit 1; }
+
+          if ! ./gradlew assembleDebug; then
+            exit_on_error "Build failed for '$APK_VERSION_TAG' build."
+          fi
+          
+          ls -al $APK_DIR_PATH
