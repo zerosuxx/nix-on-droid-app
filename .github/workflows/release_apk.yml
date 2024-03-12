@@ -19,8 +19,21 @@ jobs:
         run: |
           exit_on_error() { echo "$1"; exit 1; }
 
+          sed -i 's/_nix/_n0x/' ./app/build.gradle
           if ! ./gradlew assembleDebug; then
-            exit_on_error "Build failed for '$APK_VERSION_TAG' build."
+            exit_on_error "Build failed."
           fi
+
+          CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
+          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+
+          mkdir -p /tmp/artifacts
+          cp ${APK_DIR_PATH}/*.apk /tmp/artifact/termux-app-${CURRENT_VERSION_NAME}.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-app-nix
+          path: /tmp/artifacts
           
-          ls -al $APK_DIR_PATH
+
