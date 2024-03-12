@@ -28,7 +28,7 @@ jobs:
           CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
 
           mkdir -p /tmp/artifacts
-          cp ${APK_DIR_PATH}/*.apk /tmp/artifact/termux-app-${CURRENT_VERSION_NAME}.apk
+          cp ${APK_DIR_PATH}/*.apk /tmp/artifacts/termux-app-${CURRENT_VERSION_NAME}.apk
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
