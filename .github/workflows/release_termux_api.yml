@@ -1,0 +1,100 @@
+name: Build Termux API APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Termux:API git tag (e.g. v0.53.0)"
+        required: true
+        default: "v0.53.0"
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Termux API
+        uses: actions/checkout@v7
+        with:
+          repository: termux/termux-api
+          ref: ${{ inputs.version }}
+          path: termux-api
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: termux-api/**/*.gradle*
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Patch Termux API
+        working-directory: termux-api
+        run: |
+          set -euxo pipefail
+
+          MANIFEST="app/src/main/AndroidManifest.xml"
+          GRADLE="app/build.gradle"
+
+          echo "=== Before patch ==="
+          grep -nE \
+            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
+            "$MANIFEST" "$GRADLE" || true
+
+          # Use Nix-on-Droid as the Termux host package.
+          sed -i \
+            's/manifestPlaceholders\.TERMUX_PACKAGE_NAME = "com\.termux"/manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux.nix"/' \
+            "$GRADLE"
+
+          # Remove shared UID requirement.
+          sed -i \
+            '/android:sharedUserId=/d' \
+            "$MANIFEST"
+
+          # Make TermuxApiReceiver externally accessible.
+          sed -i \
+            '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
+            "$MANIFEST"
+
+          echo "=== After patch ==="
+          grep -nE \
+            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
+            "$MANIFEST" "$GRADLE" || true
+
+      - name: Build debug APK
+        working-directory: termux-api
+        run: |
+          chmod +x ./gradlew
+
+          ./gradlew \
+            :app:assembleDebug \
+            --no-daemon \
+            --stacktrace
+
+      - name: Collect APK
+        run: |
+          set -euxo pipefail
+
+          mkdir -p artifacts
+
+          APK="termux-api/app/build/outputs/apk/debug/app-debug.apk"
+
+          test -f "$APK"
+
+          cp \
+            "$APK" \
+            "artifacts/termux-api-${{ inputs.version }}-nix.apk"
+
+          ls -lh artifacts
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-api-${{ inputs.version }}-nix
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 30
