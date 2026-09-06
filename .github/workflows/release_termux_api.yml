@@ -1,4 +1,4 @@
-name: Build Termux API APK
+name: Release Termux API APK
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
         type: string
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -48,6 +48,17 @@ jobs:
           # Use Nix-on-Droid as the Termux host package.
           sed -i \
             's/manifestPlaceholders\.TERMUX_PACKAGE_NAME = "com\.termux"/manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux.nix"/' \
+            "$GRADLE"
+
+          # Disable the remote commit-hash dependency, regardless of which hash
+          # the upstream version currently uses.
+          sed -Ei \
+            's|^([[:space:]]*)implementation "com\.termux\.termux-app:termux-shared:[^"]+"|\1//implementation "com.termux.termux-app:termux-shared:<upstream>"|' \
+            "$GRADLE"
+
+          # Enable the published termux-shared dependency.
+          sed -Ei \
+            's|^([[:space:]]*)//[[:space:]]*implementation "com\.termux:termux-shared:([^"]+)"|\1implementation "com.termux:termux-shared:\2"|' \
             "$GRADLE"
 
           # Remove shared UID requirement.
