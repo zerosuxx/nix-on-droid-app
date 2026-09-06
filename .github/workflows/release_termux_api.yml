@@ -56,20 +56,27 @@ jobs:
             's|(implementation "com\.termux\.termux-app:termux-shared:)[^"]+(")|\10.118.0\2|' \
             "$GRADLE"
 
-          # Remove shared UID requirement.
+          # Remove upstream custom debug signing config.
           sed -i \
-            '/android:sharedUserId=/d' \
-            "$MANIFEST"
+            '/^[[:space:]]*signingConfigs[[:space:]]*{/,/^[[:space:]]*buildTypes[[:space:]]*{/{/^[[:space:]]*buildTypes[[:space:]]*{/!d}' \
+            "$GRADLE"
+
+          # Remove shared UID requirement.
+          # sed -i \
+          #  '/android:sharedUserId=/d' \
+          #  "$MANIFEST"
 
           # Make TermuxApiReceiver externally accessible.
-          sed -i \
-            '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
-            "$MANIFEST"
+          # sed -i \
+          #  '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
+          #  "$MANIFEST"
 
           echo "=== After patch ==="
           grep -nE \
             'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
             "$MANIFEST" "$GRADLE" || true
+
+          echo "==="
 
           cat "$MANIFEST"
 
