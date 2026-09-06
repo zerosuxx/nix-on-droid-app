@@ -53,7 +53,7 @@ jobs:
           # Replace any upstream commit/hash version of termux-shared
           # with the published JitPack version.
           sed -Ei \
-            's|(implementation "com\.termux\.termux-app:termux-shared:)[^"]+(")|\10.118.0\2|' \
+            's|(implementation "com\.termux\.termux-app:termux-shared:)[^"]+(")|\18aca6dbbf4\2|' \
             "$GRADLE"
 
           # Remove upstream custom debug signing config.
