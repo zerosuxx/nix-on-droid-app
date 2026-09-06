@@ -71,6 +71,12 @@ jobs:
             'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
             "$MANIFEST" "$GRADLE" || true
 
+          cat "$MANIFEST"
+
+          echo "==="
+
+          cat "$GRADLE"
+
       - name: Build debug APK
         working-directory: termux-api
         run: |
