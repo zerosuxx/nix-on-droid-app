@@ -67,9 +67,9 @@ jobs:
             "$GRADLE"
 
           # Remove shared UID requirement.
-          # sed -i \
-          #   '/android:sharedUserId=/d' \
-          #   "$MANIFEST"
+          sed -i \
+            's/[[:space:]]*android:sharedUserId="${TERMUX_PACKAGE_NAME}"//' \
+            "$MANIFEST"
 
           # Make TermuxApiReceiver externally accessible.
           # sed -i \
