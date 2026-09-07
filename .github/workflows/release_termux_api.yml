@@ -72,9 +72,9 @@ jobs:
             "$MANIFEST"
 
           # Make TermuxApiReceiver externally accessible.
-          # sed -i \
-          #   '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
-          #   "$MANIFEST"
+          sed -i \
+            '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
+            "$MANIFEST"
 
           echo "=== After patch ==="
           grep -nE \
