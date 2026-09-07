@@ -9,6 +9,12 @@ on:
         default: "v0.53.0"
         type: string
 
+      termux_shared_version:
+        description: "termux-shared JitPack commit/version"
+        required: true
+        default: "8aca6dbbf4"
+        type: string
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,7 +48,7 @@ jobs:
 
           echo "=== Before patch ==="
           grep -nE \
-            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
+            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported|termux-shared' \
             "$MANIFEST" "$GRADLE" || true
 
           # Use Nix-on-Droid as the Termux host package.
@@ -50,10 +56,9 @@ jobs:
             's/manifestPlaceholders\.TERMUX_PACKAGE_NAME = "com\.termux"/manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux.nix"/' \
             "$GRADLE"
 
-          # Replace any upstream commit/hash version of termux-shared
-          # with the published JitPack version.
+          # Replace the upstream termux-shared commit/hash.
           sed -Ei \
-            's|(implementation "com\.termux\.termux-app:termux-shared:)[^"]+(")|\18aca6dbbf4\2|' \
+            's|(implementation "com\.termux\.termux-app:termux-shared:)[^"]+(")|\1${{ inputs.termux_shared_version }}\2|' \
             "$GRADLE"
 
           # Remove upstream custom debug signing config.
@@ -63,25 +68,23 @@ jobs:
 
           # Remove shared UID requirement.
           # sed -i \
-          #  '/android:sharedUserId=/d' \
-          #  "$MANIFEST"
+          #   '/android:sharedUserId=/d' \
+          #   "$MANIFEST"
 
           # Make TermuxApiReceiver externally accessible.
           # sed -i \
-          #  '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
-          #  "$MANIFEST"
+          #   '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
+          #   "$MANIFEST"
 
           echo "=== After patch ==="
           grep -nE \
-            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported' \
+            'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported|termux-shared' \
             "$MANIFEST" "$GRADLE" || true
 
-          echo "==="
-
+          echo "=== Manifest ==="
           cat "$MANIFEST"
 
-          echo "==="
-
+          echo "=== Gradle ==="
           cat "$GRADLE"
 
       - name: Build debug APK
@@ -99,16 +102,27 @@ jobs:
           set -euxo pipefail
 
           mkdir -p artifacts
-          find termux-api/app/build/outputs/apk -type f -name '*.apk'
 
-          APK="termux-api/app/build/outputs/apk/debug/app-debug.apk"
+          echo "=== Finding generated APK ==="
 
-          test -f "$APK"
+          APK="$(find termux-api/app/build/outputs/apk \
+            -type f \
+            -name '*.apk' \
+            | head -n 1)"
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: No APK found"
+            find termux-api/app/build -type f || true
+            exit 1
+          fi
+
+          echo "Found APK: $APK"
 
           cp \
             "$APK" \
             "artifacts/termux-api-${{ inputs.version }}-nix.apk"
 
+          echo "=== Artifacts ==="
           ls -lh artifacts
 
       - name: Upload APK artifact
