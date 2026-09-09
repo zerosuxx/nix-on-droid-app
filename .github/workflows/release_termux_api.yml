@@ -76,6 +76,11 @@ jobs:
             '/android:name="\.TermuxApiReceiver"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
             "$MANIFEST"
 
+          # Make KeepAliveService externally startable.
+          sed -i \
+            '/android:name="\.KeepAliveService"/,/\/>/ s/android:exported="false"/android:exported="true"/' \
+            "$MANIFEST"
+
           echo "=== After patch ==="
           grep -nE \
             'sharedUserId|TERMUX_PACKAGE_NAME|TermuxApiReceiver|exported|termux-shared' \
