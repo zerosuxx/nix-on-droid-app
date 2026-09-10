@@ -4,6 +4,8 @@ import android.app.Application;
 import android.content.Context;
 
 import com.termux.BuildConfig;
+import com.termux.api.SocketListener;
+import com.termux.api.util.ResultReturner;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.TermuxBootstrap;
@@ -61,6 +63,13 @@ public class TermuxApplication extends Application {
 
             // Setup termux-am-socket server
             TermuxAmSocketServer.setupTermuxAmSocketServer(context);
+
+            // NIX-ON-DROID: Built-in Termux:API support (ported from the separate Termux:API app).
+            // ResultReturner needs an app context for connecting back to the client sockets, and
+            // SocketListener provides the "<TERMUX_API_PACKAGE_NAME>://listen" abstract socket
+            // that the termux-api client binary tries before falling back to `am broadcast`.
+            ResultReturner.setContext(context);
+            SocketListener.createSocketListener(this);
         } else {
             Logger.logErrorExtended(LOG_TAG, "Termux files directory is not accessible\n" + error);
         }
