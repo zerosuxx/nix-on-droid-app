@@ -11,32 +11,45 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build APK
         run: |
+          set -euo pipefail
           exit_on_error() { echo "$1"; exit 1; }
 
-          sed -i 's/_nix/_n0x/' ./app/build.gradle
+          CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
+          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+          [ -n "$CURRENT_VERSION_NAME" ] || exit_on_error "Could not read versionName from app/build.gradle."
+
+          # On a tag build the tag is the version; otherwise append the commit
+          # hash to the current version so every build is uniquely identifiable.
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            NEW_VERSION_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            NEW_VERSION_NAME="${CURRENT_VERSION_NAME}_${GITHUB_SHA:0:7}"
+          fi
+          echo "Building versionName: ${NEW_VERSION_NAME}"
+
+          sed -i -r "0,/$CURRENT_VERSION_NAME_REGEX/s//        versionName \"${NEW_VERSION_NAME}\"/" ./app/build.gradle
+          grep -qF "versionName \"${NEW_VERSION_NAME}\"" ./app/build.gradle \
+            || exit_on_error "Failed to patch versionName in app/build.gradle."
+
           if ! ./gradlew assembleDebug; then
             exit_on_error "Build failed."
           fi
 
-          CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
-          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
-          echo "${CURRENT_VERSION_NAME}"
-
           mkdir -p /tmp/artifacts
-          cp ${APK_DIR_PATH}/*.apk /tmp/artifacts/termux-app-${CURRENT_VERSION_NAME}.apk
+          cp ${APK_DIR_PATH}/*.apk /tmp/artifacts/termux-app-${NEW_VERSION_NAME}.apk
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: termux-app-nix
           path: /tmp/artifacts
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: /tmp/artifacts/*

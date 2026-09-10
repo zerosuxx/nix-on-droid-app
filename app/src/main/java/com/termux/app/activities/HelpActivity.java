@@ -34,8 +34,9 @@ public final class HelpActivity extends AppCompatActivity {
 
         mWebView = new WebView(this);
         WebSettings settings = mWebView.getSettings();
+        // The Application Cache API this used to also disable was removed in Android 13 (API 33),
+        // so setCacheMode() above is what keeps the help pages uncached.
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        settings.setAppCacheEnabled(false);
         setContentView(progressLayout);
         mWebView.clearCache(true);
 
