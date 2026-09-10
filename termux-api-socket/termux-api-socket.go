@@ -285,6 +285,12 @@ func sendToListener(cmdline string) error {
 	}
 	defer conn.Close()
 
+	// An app that accepts the connection but never answers would otherwise
+	// park us in Read forever; connectTimeout bounds the whole exchange.
+	if err := conn.SetDeadline(time.Now().Add(connectTimeout)); err != nil {
+		return fmt.Errorf("set deadline: %w", err)
+	}
+
 	if len(cmdline) > math.MaxUint16 {
 		return fmt.Errorf("command line of %d bytes exceeds the 16-bit length prefix", len(cmdline))
 	}
@@ -297,17 +303,23 @@ func sendToListener(cmdline string) error {
 		return fmt.Errorf("send command line: %w", err)
 	}
 
-	reply := make([]byte, 256)
-	n, err := conn.Read(reply)
+	// A single 0x00 byte is the acknowledgement; anything else is an error
+	// message, which is read to EOF so it is not truncated to whatever the
+	// first segment happened to carry.
+	reply, err := io.ReadAll(conn)
 	if err != nil {
 		return fmt.Errorf("read acknowledgement: %w", err)
 	}
 
-	if n == 1 && reply[0] == 0 {
+	if len(reply) == 1 && reply[0] == 0 {
 		return nil
 	}
 
-	return fmt.Errorf("plugin reported an error: %s", strings.TrimSpace(string(reply[:n])))
+	if len(reply) == 0 {
+		return fmt.Errorf("the plugin closed the connection without an acknowledgement")
+	}
+
+	return fmt.Errorf("plugin reported an error: %s", strings.TrimSpace(string(reply)))
 }
 
 func run(apiMethod string, extras []string) error {
