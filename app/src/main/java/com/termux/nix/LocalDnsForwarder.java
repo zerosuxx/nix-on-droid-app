@@ -15,7 +15,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -48,6 +47,11 @@ public final class LocalDnsForwarder {
 
     /** proot -p maps port 53 to 53 + 2000. */
     public static final int PORT = 2053;
+    /**
+     * resolv.conf points at 127.0.0.1. Not InetAddress.getLoopbackAddress(), which is ::1 on
+     * Android, and proot -p doesn't rewrite UDP sendto() to ::1 anyway.
+     */
+    private static final String HOST = "127.0.0.1";
 
     private static final int HEADER_SIZE = 12;
     /** Largest UDP answer a client without EDNS accepts (RFC 1035). */
@@ -74,7 +78,7 @@ public final class LocalDnsForwarder {
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     private static void serveUdp(@NonNull Executor executor) {
-        try (DatagramSocket socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLoopbackAddress(), PORT))) {
+        try (DatagramSocket socket = new DatagramSocket(new InetSocketAddress(HOST, PORT))) {
             Logger.logInfo(LOG_TAG, "Listening on udp 127.0.0.1:" + PORT);
             byte[] buffer = new byte[65535];
             while (true) {
@@ -103,7 +107,7 @@ public final class LocalDnsForwarder {
     @RequiresApi(api = Build.VERSION_CODES.Q)
     private static void serveTcp(@NonNull Executor executor) {
         try (ServerSocket server = new ServerSocket()) {
-            server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), PORT));
+            server.bind(new InetSocketAddress(HOST, PORT));
             Logger.logInfo(LOG_TAG, "Listening on tcp 127.0.0.1:" + PORT);
             while (true) {
                 Socket client = server.accept();
