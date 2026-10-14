@@ -70,6 +70,8 @@ public class TermuxApplication extends Application {
             // that the termux-api client binary tries before falling back to `am broadcast`.
             ResultReturner.setContext(context);
             SocketListener.createSocketListener(this);
+            // NIX-ON-DROID: Resolve DNS through Android (VPN/Private DNS aware) for glibc in proot.
+            com.termux.nix.LocalDnsForwarder.start();
         } else {
             Logger.logErrorExtended(LOG_TAG, "Termux files directory is not accessible\n" + error);
         }
